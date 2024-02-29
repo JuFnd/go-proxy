@@ -82,29 +82,22 @@ func safeJSONMarshal(data interface{}) ([]byte, error) {
 }
 
 func (r *PostgresRepository) InsertResponse(response *models.Response) error {
-    byteHeaders, err := safeJSONMarshal(response.Headers)
-    if err != nil {
-        return err
-    }
+	byteHeaders, err := safeJSONMarshal(response.Headers)
+	if err != nil {
+		return err
+	}
 
-    result, err := r.db.Exec(
-        "INSERT INTO responses(request_id, code, message, headers, body) "+
-            "VALUES ($1, $2, $3, $4, $5)",
-        response.RequestId, response.Code, response.Message,
-        string(byteHeaders), response.Body)
+	if err = r.db.QueryRow(
+		"INSERT INTO responses(request_id, code, message, headers, body) "+
+			"VALUES ($1, $2, $3, $4, $5) "+
+			"RETURNING id",
+		response.RequestId, response.Code, response.Message,
+		string(byteHeaders), response.Body).
+		Scan(&response.Id); err != nil {
+		return err
+	}
 
-    if err != nil {
-        return err
-    }
-
-    lastID, err := result.LastInsertId()
-    if err != nil {
-        return err
-    }
-
-    response.Id = int64(lastID)
-
-    return nil
+	return nil
 }
 
 func (r *PostgresRepository) GetRequestById(id int64) (*models.Request, error) {
