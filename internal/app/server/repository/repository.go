@@ -1,13 +1,17 @@
 package repository
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"unicode/utf8"
+
+	"github.com/JuFnd/go-proxy/configs"
+	"github.com/JuFnd/go-proxy/internal/app/server/pkg/models"
+
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/sirupsen/logrus"
-	"http-proxy-server/configs"
-	"http-proxy-server/internal/app/server/pkg/models"
 )
 
 type PostgresRepository struct {
@@ -57,23 +61,50 @@ func (r *PostgresRepository) InsertRequest(request *models.Request) error {
 	return nil
 }
 
+func safeJSONMarshal(data interface{}) ([]byte, error) {
+    rawBytes, err := json.Marshal(data)
+    if err == nil {
+        return rawBytes, nil
+    }
+
+    safeBytes := bytes.Map(func(r rune) rune {
+        if r < utf8.RuneSelf {
+            return -1
+        }
+        return r
+    }, rawBytes)
+
+    return json.Marshal(struct {
+        Headers string
+    }{
+        Headers: string(safeBytes),
+    })
+}
+
 func (r *PostgresRepository) InsertResponse(response *models.Response) error {
-	byteHeaders, err := json.Marshal(response.Headers)
-	if err != nil {
-		return err
-	}
+    byteHeaders, err := safeJSONMarshal(response.Headers)
+    if err != nil {
+        return err
+    }
 
-	if err = r.db.QueryRow(
-		"INSERT INTO responses(request_id, code, message, headers, body) "+
-			"VALUES ($1, $2, $3, $4, $5) "+
-			"RETURNING id",
-		response.RequestId, response.Code, response.Message,
-		string(byteHeaders), response.Body).
-		Scan(&response.Id); err != nil {
-		return err
-	}
+    result, err := r.db.Exec(
+        "INSERT INTO responses(request_id, code, message, headers, body) "+
+            "VALUES ($1, $2, $3, $4, $5)",
+        response.RequestId, response.Code, response.Message,
+        string(byteHeaders), response.Body)
 
-	return nil
+    if err != nil {
+        return err
+    }
+
+    lastID, err := result.LastInsertId()
+    if err != nil {
+        return err
+    }
+
+    response.Id = int64(lastID)
+
+    return nil
 }
 
 func (r *PostgresRepository) GetRequestById(id int64) (*models.Request, error) {

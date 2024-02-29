@@ -2,17 +2,20 @@ package delivery
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
-	"http-proxy-server/configs"
-	proxy "http-proxy-server/internal/app/proxy/server"
-	"http-proxy-server/internal/app/server/usecase"
-	"http-proxy-server/pkg"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+
+	"github.com/JuFnd/go-proxy/configs"
+	proxy "github.com/JuFnd/go-proxy/internal/app/proxy/server"
+	"github.com/JuFnd/go-proxy/internal/app/server/usecase"
+	scanner "github.com/JuFnd/go-proxy/pkg"
+
+	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 type API struct {
@@ -128,54 +131,44 @@ func (a *API) RepeatRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) ScanRequest(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 32)
-	selectedRequest, err := a.requestUseCase.GetRequestById(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+    id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 32)
+    selectedRequest, err := a.requestUseCase.GetRequestById(id)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
 
-	request := &http.Request{
-		Method: selectedRequest.Method,
-		URL: &url.URL{
-			Scheme: selectedRequest.Scheme,
-			Host:   selectedRequest.Host,
-			Path:   selectedRequest.Path,
-		},
-		Header: selectedRequest.Headers,
-		Body:   ioutil.NopCloser(strings.NewReader(selectedRequest.Body)),
-		Host:   r.Host,
-	}
-	params := url.Values{}
-	for key, values := range selectedRequest.Params {
-		for _, val := range values {
-			params.Add(key, val)
-		}
-	}
+    request := &http.Request{
+        Method: selectedRequest.Method,
+        URL: &url.URL{
+            Scheme: selectedRequest.Scheme,
+            Host:   selectedRequest.Host,
+            Path:   selectedRequest.Path,
+        },
+        Header: selectedRequest.Headers,
+        Body:   ioutil.NopCloser(strings.NewReader(selectedRequest.Body)),
+        Host:   r.Host,
+    }
 
-	var flag bool
-	for _, val := range pkg.GetParams() {
-		randValue := pkg.RandStringRunes()
-		newParams := params
-		newParams.Add(val, randValue)
-		request.URL.RawQuery = newParams.Encode()
-		resp, err := http.DefaultTransport.RoundTrip(request)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+	rootDir, _ := os.Getwd()
+    dictFilePath := rootDir + "/pkg/dicc.txt"
+    scanResults := scanner.Scan(request, dictFilePath)
 
-		if strings.Contains(string(body), randValue) {
-			w.Write([]byte(val + "-найден скрытый гет параметр\n"))
-			flag = true
-		}
-	}
-	if flag == false {
-		w.Write([]byte("скрытые гет параметры не найдены\n"))
-	}
+    var foundPaths []string
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+    for path, isFound := range scanResults {
+        if isFound {
+            foundPaths = append(foundPaths, path)
+        }
+    }
+
+    jsonData, err := json.Marshal(foundPaths)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+
+    w.Write(jsonData)
 }

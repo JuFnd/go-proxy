@@ -3,17 +3,17 @@ package server
 import (
 	"bufio"
 	"crypto/tls"
-	"http-proxy-server/configs"
-	mw2 "http-proxy-server/internal/app/proxy/pkg/mw"
-	"http-proxy-server/internal/app/server/pkg/models"
-	repo "http-proxy-server/internal/app/server/repository"
-	"http-proxy-server/internal/app/server/usecase"
-	//"http-proxy-server/internal/app/proxy/repository"
 	"io"
 	"net/http"
 	"net/http/httputil"
 	"os/exec"
 	"strings"
+
+	"github.com/JuFnd/go-proxy/configs"
+	mw2 "github.com/JuFnd/go-proxy/internal/app/proxy/pkg/mw"
+	"github.com/JuFnd/go-proxy/internal/app/server/pkg/models"
+	repo "github.com/JuFnd/go-proxy/internal/app/server/repository"
+	"github.com/JuFnd/go-proxy/internal/app/server/usecase"
 
 	"github.com/sirupsen/logrus"
 )

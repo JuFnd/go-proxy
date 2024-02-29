@@ -1,37 +1,40 @@
-package pkg
+package scanner
 
 import (
-	"bufio"
-	"log"
-	"math/rand"
-	"time"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
-var (
-	params      = make([]string, 0, 0)
-	letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-)
+func DirBusterScan(baseURL string, dictFilePath string) map[string]bool {
+    foundFiles := make(map[string]bool)
 
-func init(input ctx.Context) {
-	rand.Seed(time.Now().UnixNano())
+    data, err := ioutil.ReadFile(dictFilePath)
+    if err != nil {
+        fmt.Println("Failed to read dictionary file:", err)
+        return foundFiles
+    }
 
-	scanner := bufio.NewScanner(input)
-	for scanner.Scan() {
-		if scanner.Err() != nil {
-			log.Fatal(scanner.Err().Error())
-		}
-		params = append(params, scanner.Text())
-	}
+    lines := strings.Split(string(data), "\n")
+    u, _ := url.Parse(baseURL)
+    for _, line := range lines {
+        lineTrimmed := strings.TrimSpace(line)
+        if len(lineTrimmed) > 0 {
+            u.Path = lineTrimmed
+            resp, err := http.Head(u.String())
+            if err == nil && resp.StatusCode != 404 {
+                foundFiles[lineTrimmed] = true
+            }
+        }
+    }
+
+    return foundFiles
 }
 
-func GetParams() []string {
-	return params
-}
-
-func RandStringRunes() string {
-	b := make([]rune, 10)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
+func Scan(request *http.Request, dictFilePath string) map[string]bool {
+    parsedDictFilePath := strings.ReplaceAll(dictFilePath, "\\", "/")
+    foundFiles := DirBusterScan(request.URL.String(), parsedDictFilePath)
+    return foundFiles
 }

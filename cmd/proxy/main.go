@@ -1,14 +1,15 @@
 package main
 
 import (
-	"http-proxy-server/configs"
-	"http-proxy-server/internal/app/proxy/pkg/app"
-	"http-proxy-server/internal/app/proxy/pkg/logger"
-	"http-proxy-server/internal/app/proxy/server"
-	"http-proxy-server/internal/app/server/delivery"
-	"http-proxy-server/internal/app/server/repository"
-	"http-proxy-server/internal/app/server/usecase"
 	"sync"
+
+	"github.com/JuFnd/go-proxy/configs"
+	"github.com/JuFnd/go-proxy/internal/app/proxy/pkg/app"
+	"github.com/JuFnd/go-proxy/internal/app/proxy/pkg/logger"
+	"github.com/JuFnd/go-proxy/internal/app/proxy/server"
+	"github.com/JuFnd/go-proxy/internal/app/server/delivery"
+	"github.com/JuFnd/go-proxy/internal/app/server/repository"
+	"github.com/JuFnd/go-proxy/internal/app/server/usecase"
 )
 
 var loggerSingleton logger.Singleton

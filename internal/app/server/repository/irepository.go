@@ -1,6 +1,6 @@
 package repository
 
-import "http-proxy-server/internal/app/server/pkg/models"
+import "github.com/JuFnd/go-proxy/internal/app/server/pkg/models"
 
 type IRepository interface {
 	GetAllRequestsData() ([]*models.RequestData, error)

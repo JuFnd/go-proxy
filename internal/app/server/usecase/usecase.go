@@ -1,8 +1,8 @@
 package usecase
 
 import (
-	"http-proxy-server/internal/app/server/pkg/models"
-	"http-proxy-server/internal/app/server/repository"
+	"github.com/JuFnd/go-proxy/internal/app/server/pkg/models"
+	"github.com/JuFnd/go-proxy/internal/app/server/repository"
 )
 
 type ProxyUseCase struct {
@@ -35,6 +35,3 @@ func (u *ProxyUseCase) SaveResponse(response *models.Response) error {
 	return u.proxyRepository.InsertResponse(response)
 }
 
-func (u *ProxyUseCase) ScanRequest() {
-	panic("implement me")
-}
